@@ -177,6 +177,16 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
     - `$type`: must be `"uuid"`
     - `$hex`: the standardized `uuid-hex` representation of the UUID value
     - `$64`: the alternative `uuid-base64` representation of the UUID value
+  - This specification is agnostic to the specific language implementation of the UUID type, whether if it is a buffer, string or other binary format.
+
+  **Example**
+  ```json
+  {
+    "$type": "uuid",
+    "$hex": "0190a295-e942-75fd-8495-894efaf93a78",
+    "$64": "AZCilelCdf2ElQAAiU76+Q",
+  }
+  ```
  
 </details>
 
