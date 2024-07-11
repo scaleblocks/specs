@@ -15,8 +15,6 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
 - MUST follow the [HTTP/1.1 standard](https://datatracker.ietf.org/doc/html/rfc2616)
 - SHOULD follow the [REST Architecture Constraints and patterns](https://restfulapi.net/)
 
-[JWTs] | [Required properties] | [Metadata]
-
 ---
 
 ## 1. Vocabulary & terminology
@@ -142,8 +140,8 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
   <summary>Property keys conventions</summary>
 
   ### Property keys conventions
-  - Properties prefixed by underscores `_` 🟡SHOULD NOT be used unless specified by this specification
-  - It is 🟡RECOMMENDED, although it is not important, to use `camelCase` as the default naming convention for properties keys
+  - Properties prefixed by underscores `_` 🟡SHOULD NOT be used unless specified by this specification. They are reservated for properties that affects the operations behaviors.
+  - It is 🟡RECOMMENDED, although it is not important, to use `camelCase` as the default naming convention for properties keys 
  
 </details>
 
@@ -255,15 +253,52 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
 
 ## 8. Metadata
 <details>
-  <summary>Create one</summary>
+  <summary>General specification</summary>
 
-  ### Create one
-  ```
-  POST /:entity/
-  ```
-  - Request body
-    -  Top level: an entity object
-    -  `_id` property is accepted if is a valid UUID-ejson
+  ### General specification
+  - All entities compliant with this specification 🔴MUST include the metadata information described in this section.
+  - Single entities responses 🔴MUST use the appropriate HTTP headers to provide metadata information.
+  - Entities responses containing either a single or multiple objects, 🟡SHOULD include metadata information aggregated inside the `_meta` property.
+    - When the `?meta=true` parameter is included in the endpoint URL query, the objects 🔴MUST include the `_meta` property.
+  - An entity object 🔵MAY have duplicated metadata information in other entity properties beyond the `_meta` property.
+  - Although many API data sources do not have the capability of storing nested objects, thie `_meta` property 🔴MUST be always a nested object regardless the storage implementation.
+  - The `_meta` property 🔴MUST be ignored in every write request payload (create, patch, replace). The metadata information is intended to be set by the API server, not the client.
+</details>
+
+
+<details>
+  <summary>Versioning and hashing</summary>
+
+  ### Versioning and hashing
+  - All entities 🔴MUST include a `_meta.version` property. This property value 🔴MUST start with the number 1 at the object creation and 🔴MUST be incremented by one at every modification of the object (patch or replace operations).
+  - All entities 🔴MUST have a `_meta.hash property`. The value 🔴MUST be a hashed string of the concatenation of the shortest value of the `_id` property and the `_meta.version` value (i.e. `[_id.$base64][_meta.version]`. The hashing algorithm 🟡SHOULD be CRC32 for optimization.
+
+</details>
+
+<details>
+  <summary>Timestamps</summary>
+
+  ### Timestamps
+  - All entities 🔴MUST include a `_meta.events` property with the following properties:
+    - `created`: (🔴REQUIRED since the creation) metadata information about the creation event
+    - `updated`: (🔴REQUIRED after the first object modification) metadata information about the last time the object was modified
+  - The `created` and `updated` properties 🔴MUST be objects with the following properties:
+    - `timestamp` (🔴REQUIRED): a JavaScript date representing when the event occurred
+    - `author` (🔵OPTIONAL): the author ID or e-mail of the operation actor, if applicable
+    - `reason` (🔵OPTIONAL): the system comments about the operation
+    - `comments` (🔵OPTIONAL): the end-user comments about the operation
+
+</details>
+
+<details>
+  <summary>Origin</summary>
+
+  ### Origin
+  - If an entity object was cloned/generated from another object, it 🟡SHOULD have a `_meta.source` property with the following nested properties:
+    - `realm`: 🔴MUST be used when the object was cloned/generated from another source. Its value 🟡SHOULD be an universal representation of the source, like an Internet Domain Name.
+    - `type`: 🔴MUST be used when the source object had a different type than the current object. Its value 🟡SHOULD be the name of the foreign entity.
+    - `id`: 🔴MUST be used when the source object had a different type than the current object. Its value 🟡SHOULD be the name of the foreign entity.
+
 </details>
 
 ---
