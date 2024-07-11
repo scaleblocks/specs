@@ -39,15 +39,14 @@ The following keywords and terms are used in this document. They will have the m
   ### Additional terms and definitions
   | Term | Definition |
   | --- | --- |
-  | `slug` | a string in format `^[a-zA-Z0-9_-]+$` |
-  | `uuid-hex` | an UUID represented in [default encoding format](https://datatracker.ietf.org/doc/html/rfc4122#section-3) (hexadecimal, lowercase, hyphens) |
-  | `uuid-base64` | an UUID byte array represented as a base64 string (without hyphens) |
-  | `uuid-ejson` | an UUID represented as a JSON object and formatted as an EJSON Custom Type, as described in [ID section](#id) |
   | "Entity" or "Resource" | an unique entity within the API data domain |
   | "Resource ID" | an entity resource unique identification, such as specified in [#resource-ids] section |
   | "Entity Object" or "Document" | a single and unique object of an entity collection of objects |
   | "Entity Property" or "Object Property" or "Property" | an attribute of an entity |
-
+  | `slug` | a string in format `^[a-zA-Z0-9_-]+$` |
+  | `uuid-hex` | an UUID represented in [default encoding format](https://datatracker.ietf.org/doc/html/rfc4122#section-3) (hexadecimal, lowercase, hyphens) |
+  | `uuid-base64` | an UUID byte array represented as a base64 string (without hyphens) |
+  | `uuid-ejson` | an UUID represented as a JSON object and formatted as an EJSON Custom Type, as described in [ID section](#id) |
 </details>
 
 ## 2. General specs
@@ -64,6 +63,7 @@ The following keywords and terms are used in this document. They will have the m
 <details>
   <summary>JWTs</summary>
 
+  ### JWTs
   When using JWTs, the following claims apply:
 
   - `sub` is 🔴REQUIRED to identify the end user performing the request. It 🟡SHOULD be an [URN](https://datatracker.ietf.org/doc/html/rfc8141) or an e-mail.
@@ -103,7 +103,7 @@ The following keywords and terms are used in this document. They will have the m
   - All the URIs in Link header 🟡SHOULD be relative paths when the links are relative, in order to reduce the HTTP payload length.
 
   <details>
-    <summary>All link relations and spec references</summary>
+    <summary>All the link relations and spec references</summary>
     
   | Relation | Usage | Reference | Example |
   | --- | --- | --- | --- |
@@ -213,76 +213,151 @@ The following keywords and terms are used in this document. They will have the m
  
 </details>
 
-## 7. Endpoints
 <details>
-  <summary>Create one</summary>
+  <summary>_meta</summary>
 
-  ### Create one
-  ```
-  POST /:entity/
-  ```
-  - Request body
-    -  Top level: an entity object
-    -  `_id` property is accepted if is a valid UUID-ejson
+  ### `_meta`
+  - All entity objects 🔴MUST have a `_meta` property.
+  - Its type, values and other specifications 🔴MUST follow the [Metadata section](8-Metadata).
+ 
 </details>
 
 <details>
-  <summary>Get one</summary>
+  <summary>_tid</summary>
 
-  ### Get one
-  ```
-  GET /:entity/:id
-  ```
+  ### `_tid`
+  - The `_tid` property 🔵MAY be used to indicate a Tenant ID that the Document is subject to.
+  - Its type 🟡SHOULD be the [ID type](#id)
+ 
+</details>
+
+## 7. Endpoints
+
+### Create one
+
+```
+POST /:entity/
+```
+
+<details>
+  <summary>Request body</summary>
+
+  -  Top level: 🔴MUST be an entity object
+  -  The `_id` property is accepted 🔵MAY be sent if it matches the adequate entity ID type
+    
+</details>
+
+### Get one
+```
+GET /:entity/:id
+```
+
+<details>
+  <summary>Response headers</summary>
 
   - Link rel=collection header
+
 </details>
 
 <details>
-  <summary>Patch one by id</summary>
+  <summary>Response body</summary>
 
-  ### Patch one by id
-  ```
-  PATCH /:entity/:id
-  ```
-  - Request body
-    - Top level: either one of:
-      - (Short form) a partial entity object that describes each property/value that must be replaced
-      - (Long form) a [JSON Patch](https://jsonpatch.com/) operations array
-    -  `_id` is forbidden
+  - The endpoint 🔴MUST return the integral entity object without any modification.
+
+</details>
+
+### Patch one by id
+
+```
+PATCH /:entity/:id
+```
+
+<details>
+  <summary>Request body</summary>
+
+  - Top level: 🔴MUST be either one of:
+    - (Short form) a partial entity object that describes each property/value that must be replaced
+    - (Long form) a [JSON Patch](https://jsonpatch.com/) operations array
+  - `_id` is 🔴FORBIDDEN
+
 </details>
 
 <details>
-  <summary>Replace one by id</summary>
+  <summary>Response body</summary>
 
-  ### Replace one by id
-  ```
-  PUT /:entity/:id
-  ```
+  - The endpoint 🟡SHOULD return the entity object after the performed modifications.
+    - Otherwise, the endpoint 🔴MUST return an empty body.
+
+</details>
+
+### Replace one by id
+
+```
+PUT /:entity/:id
+```
+
+<details>
+  <summary>Request body</summary>
+
   - The same definition as [Create one](#create-one)
 
 </details>
 
 <details>
-  <summary>Patch one by id</summary>
+  <summary>Response body</summary>
 
-  ### Replace one by id
-  ```
-  PUT /:entity/:id
-  ```
-  - The same definition as [Create one](#create-one)
+  - The endpoint 🟡SHOULD return the entity object after the performed replacement.
+    - Otherwise, the endpoint 🔴MUST return an empty body.
 
 </details>
+
+### Patch multiple by filter
+
+```
+PUT /:entity/:id?filter=[filter]
+```
+
+<details>
+  <summary>URL Parameters</summary>
+
+  - The query string 🔴MUST have a `filter` parameter with the appropriate query filter, regardless its syntax
+
+</details>
+
+<details>
+  <summary>Request body</summary>
+
+  - The same definition as [Patch one by id](#Patch-one-by-id)
+
+</details>
+
+<details>
+  <summary>Response body</summary>
+
+  - The endpoint 🟡SHOULD return the integral entity objects after the performed modifications.
+    - Otherwise, the endpoint 🔴MUST return an empty body.
+
+</details>
+
+### Delete one by id
+
+```
+DELETE /:entity/:id?[force=true]
+```
  
 <details>
-  <summary>Delete one by id</summary>
+  <summary>URL Parameters</summary>
 
-  ### Replace one by id
-  ```
-  DELETE /:entity/:id?[force=true]
-  ```
-  - Request query
-    - `force=true` (optional): if it is present, the resouce MUST be permanently deleted. Otherwise, the entity object should be softly deleted in the server by setting the property `_meta.status` to `ARCHIVED`.
-  - Response status: `204`
+  - The query string 🟡SHOULD accept a `force=true` parameter if the CRUD API has the capability of soft delete.
+    - If the parameter is present, the resouce 🔴MUST be permanently deleted.
+    - Otherwise, the entity object should be softly deleted in the server by setting the property `_meta.status` to `archived`, as described in section XXXXX.
+
+</details>
+
+<details>
+  <summary>Response body</summary>
+
+  - The endpoint 🔴MUST return an empty body.
 
 </details>
 
