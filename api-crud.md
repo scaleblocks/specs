@@ -11,9 +11,14 @@ This **CRUD API Spec** describes a generic RESTful API specification to make the
 The objective of this specification is to aggregate common RESTful CRUD API patterns and other stablished specifications in order to achieve an universal CRUD API format.
 
 ### Inheritance
+
 Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance with this specification:
 - MUST follow the [HTTP/1.1 standard](https://datatracker.ietf.org/doc/html/rfc2616)
 - SHOULD follow the [REST Architecture Constraints and patterns](https://restfulapi.net/)
+
+### Augmentation
+
+This specification augmented [many stablished references](#references) to build the CRUD API anatomy.
 
 ---
 
@@ -82,10 +87,11 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
   ### Response
   | Header | Requirements |
   | ---  | --- |
-  | Content-Type | 🔴MUST be always present and match the accepted media type |
-  | X-Request-Id | 🟡SHOULD be an [`uuid-hex`](#1-vocabulary--terminology) |
-  | ETag | 🟡SHOULD be the same value as the `_meta.hash` property |
-  | Link | Related entity resources, regardless if they were stored within the entity object or not, 🟡SHOULD be referenced using the [HTTP Link header](https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Headers/Link) and these relations 🔴MUST use one of the [IANA Link Relations](https://www.iana.org/assignments/link-relations/link-relations.xhtml). |
+  | Content-Type | 🔴MUST be always present and match the accepted media type. |
+  | ETag | 🔴MUST be the same value as the [`_meta.hash`](#Versioning-and-hashing) property. |
+  | Last-Modified | 🔴MUST be the same value as the [`_meta.updated.timestamp`](#Timestamps) property. |
+  | Link | 🔴MUST follow the [`Metadata section`](#8-metadata). Possible relations are `author, convertedfrom`. |
+  | X-Request-Id | 🟡SHOULD be a fresh [`uuid-hex`](#1-vocabulary--terminology). |
 
 </details>
 
@@ -175,6 +181,8 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
   ```
   GET /:entity/:id
   ```
+
+  - Link rel=collection header
 </details>
 
 <details>
@@ -248,7 +256,15 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
       - Multiple values are accepted in comma-separated format.
       - Dot-notation should be used for nested properties.
       - The `-` hyphen should be used together with a property key to omit a property.
+  
+  #### Pagination
 
+  Link rels
+  first
+  current
+  last
+  next
+  prev
 </details>
 
 ## 8. Metadata
@@ -257,7 +273,7 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
 
   ### General specification
   - All entities compliant with this specification 🔴MUST include the metadata information described in this section.
-  - Single entities responses 🔴MUST use the appropriate HTTP headers to provide metadata information.
+  - Single entities responses 🔴MUST use the appropriate HTTP headers defined in this section to provide metadata information.
   - Entities responses containing either a single or multiple objects, 🟡SHOULD include metadata information aggregated inside the `_meta` property.
     - When the `?meta=true` parameter is included in the endpoint URL query, the objects 🔴MUST include the `_meta` property.
   - An entity object 🔵MAY have duplicated metadata information in other entity properties beyond the `_meta` property.
@@ -270,8 +286,13 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
   <summary>Versioning and hashing</summary>
 
   ### Versioning and hashing
+
+  | Header | Value |
+  | --- | --- |
+  | ETag | `_meta.hash` |
+  
   - All entities 🔴MUST include a `_meta.version` property. This property value 🔴MUST start with the number 1 at the object creation and 🔴MUST be incremented by one at every modification of the object (patch or replace operations).
-  - All entities 🔴MUST have a `_meta.hash property`. The value 🔴MUST be a hashed string of the concatenation of the shortest value of the `_id` property and the `_meta.version` value (i.e. `[_id.$base64][_meta.version]`. The hashing algorithm 🟡SHOULD be CRC32 for optimization.
+  - All entities 🔴MUST have a `_meta.hash` property. The value 🔴MUST be a hashed string of the concatenation of the shortest value of the `_id` property and the `_meta.version` value (i.e. `[_id.$base64][_meta.version]`. The hashing algorithm 🟡SHOULD be CRC32 for optimization.
 
 </details>
 
@@ -279,9 +300,15 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
   <summary>Timestamps</summary>
 
   ### Timestamps
+
+  | Header | Value |
+  | --- | --- |
+  | Last-Modified | `_meta.updated.timestamp` 🔴REQUIRED |
+  | Link | `urn:<_meta.updated.author>; rel=author` 🔵OPTIONAL |
+
   - All entities 🔴MUST include a `_meta.events` property with the following properties:
-    - `created`: (🔴REQUIRED since the creation) metadata information about the creation event
-    - `updated`: (🔴REQUIRED after the first object modification) metadata information about the last time the object was modified
+    - `created`: (🔴REQUIRED) metadata information about the creation event
+    - `updated`: (🔴REQUIRED metadata information about the last time the object was modified, including the creation
   - The `created` and `updated` properties 🔴MUST be objects with the following properties:
     - `timestamp` (🔴REQUIRED): a JavaScript date representing when the event occurred
     - `author` (🔵OPTIONAL): the author ID or e-mail of the operation actor, if applicable
@@ -294,10 +321,15 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
   <summary>Origin</summary>
 
   ### Origin
-  - If an entity object was cloned/generated from another object, it 🟡SHOULD have a `_meta.source` property with the following nested properties:
+
+  | Header | Value |
+  | --- | --- |
+  | Link | `<URL>; rel=convertedfrom` 🔵OPTIONAL if it is possible to link using an URL, either absolute or relative |
+
+  - If an entity object was cloned/generated from another object, it 🟡SHOULD have a `_meta.origin` property with the following nested properties:
     - `realm`: 🔴MUST be used when the object was cloned/generated from another source. Its value 🟡SHOULD be an universal representation of the source, like an Internet Domain Name.
     - `type`: 🔴MUST be used when the source object had a different type than the current object. Its value 🟡SHOULD be the name of the foreign entity.
-    - `id`: 🔴MUST be used when the source object had a different type than the current object. Its value 🟡SHOULD be the name of the foreign entity.
+    - `id`: 🔴MUST be used to indicate the original Resource ID.
 
 </details>
 
