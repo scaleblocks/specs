@@ -12,13 +12,16 @@ The objective of this specification is to aggregate common RESTful CRUD API patt
 
 ### Inheritance
 
-Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance with this specification:
-- MUST follow the [HTTP/1.1 standard](https://datatracker.ietf.org/doc/html/rfc2616)
+Except when explicitly overrided, all the "CRUD APIs" implemented in consonance with this specification:
+- MUST follow the [HTTP Protocol](https://datatracker.ietf.org/doc/html/rfc2616)
 - SHOULD follow the [REST Architecture Constraints and patterns](https://restfulapi.net/)
 
 ---
 
 ## 1. Vocabulary & terminology
+
+The following keywords and terms are used in this document. They will have the meanings described below.
+
 <details>
   <summary>Keywords</summary>
 
@@ -48,6 +51,7 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
 </details>
 
 ## 2. General specs
+
 <details>
   <summary>Resource IDs</summary>
 
@@ -78,7 +82,6 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
   | Accept | 🔴MUST be always present |
 
 </details>
-
 
 <details>
   <summary>Response</summary>
@@ -379,6 +382,32 @@ Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance w
     - `realm`: 🔴MUST be used when the object was cloned/generated from another source. Its value 🟡SHOULD be an universal representation of the source, like an Internet Domain Name.
     - `type`: 🔴MUST be used when the source object had a different type than the current object. Its value 🟡SHOULD be the name of the foreign entity.
     - `id`: 🔴MUST be used to indicate the original Resource ID.
+
+</details>
+
+<details>
+  <summary>Lifecycle</summary>
+
+  ### Lifecycle
+
+  Lifecycle is intended to logically express two capabilities of a CRUD API:
+  1. Soft-delete
+  2. Data staging
+
+  #### The status property
+  - Regardless the domain-specific lifecycle status of an entity, the `_meta.status` 🔴MUST NOT be used in any case different than the cases below and any other `_meta.status` values 🔴MUST be ignored by the CRUD API.
+  - Documents without the `_meta.status` property 🟡SHOULD be considered as "published", "mature" and "integral" versions of the object.
+
+  #### Soft delete
+  - Some CRUD APIs are capable of soft-deleting entity objects. This consists in put objects into an "archived" state and separate them off the rest of the entity objects, in order to retain the information for a certain period of time.
+  - Regardless if the "archived" objects are stored within the same "unarchived" objects storage, it is a best pratice to mark the objects as archived anyway.
+  - To achieve this, a CRUD API with the soft-delete capability 🔴MUST mark the archived objects with the `_meta.status` value set to `"archived"`, as also described in the [DELETE] endpoint.
+  - Documents marked with `_meta.status = "archive"` 🟡SHOULD NOT be retrieved in read operations unlesss explicitly specified by the client. 
+
+  #### Data staging
+  - Some CRUD APIs are capable of "stage" entity objects until they are in a certain maturity stage. Some of these stagings could be drafts of a blog post or even SAGA Patterns applied to entities. Data staging could also be used to perform transactions in copies ("branched objects") before apply modifications to an object.
+  - To achieve this, a CRUD API with data staging capability 🔴MUST mark the staging/draft objects with the `_meta.status` value set to `"draft"`.
+  - Documents marked with `_meta.status = "draft"` 🟡SHOULD NOT be retrieved in read operations unlesss explicitly specified by the client.
 
 </details>
 
