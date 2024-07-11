@@ -8,17 +8,13 @@ This **CRUD API Spec** describes a generic RESTful API specification to make the
 - **D**elete (soft/hard)
 
 ### Objective
-The objective of this specification is to aggregate common RESTful CRUD API patterns and other stablished specifications in order to achieve an universal CRUD API format.
+The objective of this specification is to aggregate common RESTful CRUD API patterns and other stablished specifications in order to achieve an universal CRUD API format. See [References](#References) for more details
 
 ### Inheritance
 
 Except when explicitly overrided, all the "CRUD APIs" implemented inconsonance with this specification:
 - MUST follow the [HTTP/1.1 standard](https://datatracker.ietf.org/doc/html/rfc2616)
 - SHOULD follow the [REST Architecture Constraints and patterns](https://restfulapi.net/)
-
-### Augmentation
-
-This specification augmented [many stablished references](#references) to build the CRUD API anatomy.
 
 ---
 
@@ -44,7 +40,10 @@ This specification augmented [many stablished references](#references) to build 
   | `uuid-hex` | an UUID represented in [default encoding format](https://datatracker.ietf.org/doc/html/rfc4122#section-3) (hexadecimal, lowercase, hyphens) |
   | `uuid-base64` | an UUID byte array represented as a base64 string (without hyphens) |
   | `uuid-ejson` | an UUID represented as a JSON object and formatted as an EJSON Custom Type, as described in [ID section](#id) |
-  | Resource ID | an entity resource unique identification, such as specified in [#resource-ids] section
+  | "Entity" or "Resource" | an unique entity within the API data domain |
+  | "Resource ID" | an entity resource unique identification, such as specified in [#resource-ids] section |
+  | "Entity Object" or "Document" | a single and unique object of an entity collection of objects |
+  | "Entity Property" or "Object Property" or "Property" | an attribute of an entity |
 
 </details>
 
@@ -85,14 +84,41 @@ This specification augmented [many stablished references](#references) to build 
   <summary>Response</summary>
     
   ### Response
+
   | Header | Requirements |
   | ---  | --- |
   | Content-Type | 🔴MUST be always present and match the accepted media type. |
   | ETag | 🔴MUST be the same value as the [`_meta.hash`](#Versioning-and-hashing) property. |
   | Last-Modified | 🔴MUST be the same value as the [`_meta.updated.timestamp`](#Timestamps) property. |
-  | Link | 🔴MUST follow the [`Metadata section`](#8-metadata). Possible relations are `author, convertedfrom`. |
+  | Warning | 🔵MAY be used to indicate API warnings to the client, such as deprecation, quota, payment warnings, etc. |
   | X-Request-Id | 🟡SHOULD be a fresh [`uuid-hex`](#1-vocabulary--terminology). |
 
+  #### Link Header
+  - The `Link` header 🔴MUST be used in many cases described by this specification, like the [`Metadata section`](#8-metadata).
+  - According to the HTTP Link Header spec, multiple links MUST be comma-separated. Example: `link1, link2`.
+  - According to the HTTP Link Header spec, the relation (`rel`) attribute MUST be separated by a semicolon. Example: `link; rel=relation`.
+  - All the URIs in Link header 🟡SHOULD be relative paths when the links are relative, in order to reduce the HTTP payload length.
+
+  <details>
+    <summary>All link relations and spec references</summary>
+    
+  | Relation | Usage | Reference | Example |
+  | --- | --- | --- | --- |
+  | about | The URL that should be called to include metadata information with the request. | [Metadata - General specification](#General-specification) | `/users/ID?meta=true; rel=about` |
+  | author | The author ID that performed the last modification to the entity object. | [Metadata - `_meta.updated.author`](#Timestamps) | `urn:users:ID; rel=author` |
+  | collection | The URL that points to the entity list when dealing with single objects. | --- | `/users; rel=collection` |
+  | convertedfrom | Indicates the original resource the entity object was cloned from. | --- | `/people/ID; rel=convertedfrom` |
+  | current | The current page in a list of resources. | --- | `/users?page=2&page_size=20; rel=current` |
+  | describedby | The entity schema URL. | --- | `https://myapi.com/schemas/users.json; rel=describedby` |
+  | edit | The preferred endpoint to edit this entity object. | --- | `/users/ID; rel=edit; method=patch` |
+  | first | The first page in a list of resources. | --- | `/users?page=1&page_size=20; rel=first` |
+  | last | The last page in a list of resources. | --- | `/users?page=5&page_size=20; rel=last` |
+  | next | The next page in a list of resources. | --- | `/users?page=3&page_size=20; rel=next` |
+  | prev | The previous page in a list of resources. | --- | `/users?page=1&page_size=20; rel=prev` |
+  | service-desc | The OpenAPI Spec URL of the current API. | --- | `https://myapi.com/docs/oas.json; rel=service-desc` |
+  | service-doc | The Swagger UI URL of the current API. | --- | `https://myapi.com/docs/swagger; rel=service-doc` |
+    
+  </details>
 </details>
 
 ## 4. URL parameters
@@ -114,7 +140,8 @@ This specification augmented [many stablished references](#references) to build 
   ### No envelope usage
   - Request and response bodies 🔴MUST represent literally the entities objects and its top-level attributes
   - Entities objects 🔴MUST NOT be wrapped in envelopes, such as `data`, `response`, `result` or any similar.
-  - Related entity resources that are not explicitly stored inside entity objects 🔴MUST be referenced using the [HTTP Link header](https://developer.mozilla.org/pt-BR/docs/Web/HTTP/Headers/Link) and these relations 🔴MUST use one of the [IANA Link Relations](https://www.iana.org/assignments/link-relations/link-relations.xhtml).
+  - The API 🔴MUST NOT respond with any virtual property (a property that is not stored within the entity object) to reference any entity links.
+  - Related entity resources that are not explicitly stored inside entity objects 🔴MUST be referenced using the [Link header](#Link-Header) and these relations 🔴MUST use one of the [IANA Link Relations](https://www.iana.org/assignments/link-relations/link-relations.xhtml).
 
 </details>
 
@@ -126,6 +153,18 @@ This specification augmented [many stablished references](#references) to build 
   - When serializing language-specific types, EJSON serialization 🟡SHOULD be used in order to preserve the type information and to make sure that strongly-typed values are always represented as strings
     - The default [MongoDB EJSON specification in relaxed format](https://www.mongodb.com/docs/upcoming/reference/mongodb-extended-json/) 🔴MUST be used to serialize the most common complex types
     - Additionally, the [Meteor EJSON specification](https://docs.meteor.com/api/ejson#EJSON-addType) 🔵MAY be used to serialize other custom types
+  
+</details>
+
+<details>
+  <summary>Error payloads</summary>
+  
+  ### Error payloads
+  - Unsuccessful HTTP Requests 🔴MUST respond with the appropriate HTTP Status Codes and a payload with additional error details.
+  - The error payload 🟡SHOULD have at least:
+    1. an error unique code, such as a number or a string;
+    2. a human message describing the error.
+  - The error payload 🔵MAY also have additional properties to help developers and systems to deal with the error, like debug and documentation URLs, tracing information, etc.
   
 </details>
 
@@ -337,10 +376,19 @@ This specification augmented [many stablished references](#references) to build 
 
 ## References
 
+### Standards
 - HTTP Patch: [RFC 5789](https://datatracker.ietf.org/doc/html/rfc5789)
 - UUID v7: [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562#section-5.7)
+- JSON Web Tokens (JWT) Claims: [RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519) | [IANA Claims Registry](https://www.iana.org/assignments/jwt/jwt.xhtml)
+- Web Linking: [RFC 8288#3](https://httpwg.org/specs/rfc8288.html#header) | [IANA HTTP Fields Registry](https://www.iana.org/assignments/http-fields/http-fields.xhtml)
 - JSON Patch: [Website](https://jsonpatch.com/) | [RFC 6901](https://datatracker.ietf.org/doc/html/rfc6901/)
 - EJSON: [EJSON Relaxed Format](https://www.mongodb.com/docs/upcoming/reference/mongodb-extended-json/) | [EJSON Custom Type](https://docs.meteor.com/api/ejson#EJSON-addType)
+
+### Inspirations
+- Salesforce REST API: [Docs]() | [Warning Header](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/headers_warning.htm) | [REST Endpoint Anatomy](https://developer.salesforce.com/docs/atlas.en-us.api_rest.meta/api_rest/intro_rest_resources.htm)
+- Github REST API: [Docs](https://docs.github.com/pt/rest) | [Pagination](https://docs.github.com/pt/rest/using-the-rest-api/using-pagination-in-the-rest-api?apiVersion=2022-11-28)
+- Notion API: [Docs](https://developers.notion.com/reference) | [Pagination](https://developers.notion.com/reference/intro#parameters-for-paginated-requests)
+- Wordpress REST API: [Docs](https://developer.wordpress.org/rest-api/)
 
 ## License
 
